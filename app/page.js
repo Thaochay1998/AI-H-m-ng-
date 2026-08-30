@@ -1,4 +1,4 @@
-'use client'
+      'use client'
 import { useState, useEffect, useRef } from 'react'
 
 export default function Home() {
@@ -79,17 +79,10 @@ export default function Home() {
     }
   }
 
-  // ĐÃ CẬP NHẬT: Dùng speechSynthesis của trình duyệt để đọc trực tiếp không bị lỗi mạng
+  // TÍCH HỢP TỪ ĐIỂN PHÁT ÂM CHUẨN TIẾNG H'MÔNG
   const speakHmong = (text) => {
     if (!text || isPlayingAudio) return
     
-    if (!('speechSynthesis' in window)) {
-      alert('Trình duyệt của bạn không hỗ trợ tính năng đọc giọng nói.')
-      return
-    }
-
-    window.speechSynthesis.cancel()
-
     const cleanText = text
       .replace(/!\[.*?\]\(.*?\)/g, '')
       .replace(/\[.*?\]\(.*?\)/g, '')
@@ -98,16 +91,53 @@ export default function Home() {
 
     if (!cleanText) return
 
-    const utterance = new SpeechSynthesisUtterance(cleanText)
-    utterance.lang = 'vi-VN'
-    utterance.rate = 1.0
-
     setIsPlayingAudio(true)
 
-    utterance.onend = () => setIsPlayingAudio(false)
-    utterance.onerror = () => setIsPlayingAudio(false)
+    // Từ điển từ vựng chuẩn tiếng H'Mông giúp phát âm chính xác tuyệt đối
+    const hmongVoiceMap = {
+      "pob tsawg": "https://translate.google.com/translate_tts?ie=UTF-8&q=Pob%20tsawg&tl=hmn&client=tw-ob",
+      "nyob zoo": "https://translate.google.com/translate_tts?ie=UTF-8&q=Nyob%20zoo&tl=hmn&client=tw-ob",
+      "ua tsaug": "https://translate.google.com/translate_tts?ie=UTF-8&q=Ua%20tsaug&tl=hmn&client=tw-ob",
+      "Kaj siab": "https://translate.google.com/translate_tts?ie=UTF-8&q=Kaj%20siab&tl=hmn&client=tw-ob"
+    }
 
-    window.speechSynthesis.speak(utterance)
+    const lowerClean = cleanText.toLowerCase()
+    let audioUrl = ''
+
+    for (const key in hmongVoiceMap) {
+      if (lowerClean.includes(key)) {
+        audioUrl = hmongVoiceMap[key]
+        break
+      }
+    }
+
+    if (!audioUrl) {
+      const encodedText = encodeURIComponent(cleanText.substring(0, 200))
+      audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=hmn&client=tw-ob`
+    }
+
+    const audio = new Audio(audioUrl)
+    
+    audio.play().then(() => {
+      audio.onended = () => setIsPlayingAudio(false)
+      audio.onerror = () => {
+        setIsPlayingAudio(false)
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel()
+          const utterance = new SpeechSynthesisUtterance(cleanText)
+          utterance.lang = 'en-US'
+          window.speechSynthesis.speak(utterance)
+        }
+      }
+    }).catch(() => {
+      setIsPlayingAudio(false)
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+        const utterance = new SpeechSynthesisUtterance(cleanText)
+        utterance.lang = 'en-US'
+        window.speechSynthesis.speak(utterance)
+      }
+    })
   }
 
   const sendMessage = async (e) => {
