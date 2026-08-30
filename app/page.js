@@ -79,19 +79,35 @@ export default function Home() {
     }
   }
 
+  // ĐÃ CẬP NHẬT: Dùng speechSynthesis của trình duyệt để đọc trực tiếp không bị lỗi mạng
   const speakHmong = (text) => {
     if (!text || isPlayingAudio) return
-    const cleanText = text.replace(/!\[.*?\]\(.*?\)/g, '').replace(/[#*`_]/g, '').trim()
+    
+    if (!('speechSynthesis' in window)) {
+      alert('Trình duyệt của bạn không hỗ trợ tính năng đọc giọng nói.')
+      return
+    }
+
+    window.speechSynthesis.cancel()
+
+    const cleanText = text
+      .replace(/!\[.*?\]\(.*?\)/g, '')
+      .replace(/\[.*?\]\(.*?\)/g, '')
+      .replace(/[#*`_~()-]/g, '')
+      .trim()
+
     if (!cleanText) return
 
-    const shortText = cleanText.substring(0, 250)
-    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(shortText)}&tl=hmn&client=tw-ob`
-    
-    const audio = new Audio(audioUrl)
+    const utterance = new SpeechSynthesisUtterance(cleanText)
+    utterance.lang = 'vi-VN'
+    utterance.rate = 1.0
+
     setIsPlayingAudio(true)
-    audio.play()
-      .then(() => { audio.onended = () => setIsPlayingAudio(false) })
-      .catch((err) => { setIsPlayingAudio(false) })
+
+    utterance.onend = () => setIsPlayingAudio(false)
+    utterance.onerror = () => setIsPlayingAudio(false)
+
+    window.speechSynthesis.speak(utterance)
   }
 
   const sendMessage = async (e) => {
@@ -135,11 +151,9 @@ export default function Home() {
     }
   }
 
-  // Render hiển thị nội dung: Hỗ trợ cả Hình ảnh & Video MP4 nhép miệng
   const renderMessageContent = (content) => {
     if (!content) return ''
     
-    // Kiểm tra liên kết Video MP4
     const videoRegex = /\[(.*?Video.*?)\]\((https?:\/\/.*?\.(?:mp4|webm|mov).*?)\)/gi
     const imgRegex = /!\[.*?\]\((https?:\/\/.*?|data:image\/.*?)\)/g
     
@@ -181,7 +195,6 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-[#0f172a] text-slate-100 font-sans overflow-hidden">
-      {/* Sidebar Navigation */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1e293b] border-r border-slate-800 flex flex-col transition-transform duration-300 md:static md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-3">
           <button onClick={createNewChat} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-700 hover:bg-slate-800 text-sm font-medium transition text-emerald-400 bg-slate-900/50">
@@ -201,7 +214,6 @@ export default function Home() {
 
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 z-40 md:hidden" />}
 
-      {/* Main Container */}
       <div className="flex-1 flex flex-col h-full relative bg-[#0f172a]">
         <header className="flex items-center justify-between p-3.5 bg-[#1e293b] border-b border-slate-800 shadow-sm">
           <div className="flex items-center gap-3">
@@ -225,7 +237,6 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Chat Stream */}
         <main className="flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl w-full mx-auto">
           {currentChat?.messages.map((msg, idx) => (
             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -234,7 +245,7 @@ export default function Home() {
                 
                 {msg.role === 'assistant' && (
                   <div className="mt-2 pt-2 border-t border-slate-700/40 flex items-center justify-between text-xs text-slate-400">
-                    <button onClick={() => speakHmong(msg.content)} disabled={isPlayingAudio} className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-medium transition">
+                    <button onClick={() => speakHmong(msg.content)} disabled={isPlayingAudio} className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-medium transition cursor-pointer">
                       <span>{isPlayingAudio ? '🔊 Đang đọc...' : '🔊 Nghe đọc (H’Mông)'}</span>
                     </button>
                   </div>
@@ -253,24 +264,22 @@ export default function Home() {
           <div ref={messagesEndRef} />
         </main>
 
-        {/* Input Bar */}
         <footer className="p-3 bg-[#1e293b] border-t border-slate-800">
           {selectedImage && (
             <div className="max-w-3xl mx-auto mb-2 flex items-center gap-2 bg-[#0f172a] p-2 rounded-xl border border-slate-700">
               <img src={selectedImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg" />
               <span className="text-xs text-emerald-400 flex-1">Đã chọn ảnh! Gõ "ghép mặt" hoặc "tạo video".</span>
-              <button onClick={() => setSelectedImage(null)} className="text-xs text-red-400 px-2">Xóa</button>
+              <button onClick={() => setSelectedImage(null)} className="text-xs text-red-400 px-2 cursor-pointer">Xóa</button>
             </div>
           )}
           <form onSubmit={sendMessage} className="max-w-3xl mx-auto flex gap-2">
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-[#0f172a] border border-slate-700 px-3.5 py-3 rounded-xl text-lg hover:bg-slate-800 transition">📷</button>
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-[#0f172a] border border-slate-700 px-3.5 py-3 rounded-xl text-lg hover:bg-slate-800 transition cursor-pointer">📷</button>
             <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Nhập câu hỏi, 'Vẽ...', 'Ghép mặt giữ nét gốc' hoặc 'Tạo video'..." className="flex-1 bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition" />
-            <button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-medium text-sm transition shadow-md">Gửi</button>
+            <button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-medium text-sm transition shadow-md cursor-pointer">Gửi</button>
           </form>
         </footer>
       </div>
     </div>
   )
 }
-  
