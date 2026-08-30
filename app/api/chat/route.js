@@ -126,7 +126,7 @@ export async function POST(req) {
     }
 
     // =========================================================================
-    // 4. CHAT VĂN BẢN, GIẢI TOÁN, KỊCH BẢN & SOI ẢNH (GEMINI 2.5 FLASH)
+    // 4. CHAT VĂN BẢN, GIẢI TOÁN, KỊCH BẢN & SOI ẢNH (GEMINI 3.6 FLASH)
     // =========================================================================
     const SYSTEM_PROMPT = `Bạn là "AI H’Mông" - Trợ lý AI toàn năng dành cho cộng đồng H’Mông và Việt Nam.
 Nhiệm vụ: Trò chuyện, giải toán chi tiết, sáng tạo kịch bản video, dịch thuật Tiếng H'Mông (chữ RPA) và soi phân tích ảnh.`
@@ -150,9 +150,9 @@ Nhiệm vụ: Trò chuyện, giải toán chi tiết, sáng tạo kịch bản v
       return { role, parts: [{ text: m.content || '' }] }
     })
 
-    // ĐÃ CHUYỂN SANG MODEL MỚI gemini-2.5-flash ĐỂ TRÁNH LỖI NOT FOUND
+    // SỬ DỤNG MODEL gemini-3.6-flash THEO YÊU CẦU MỚI NHẤT TỪ GOOGLE
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -174,5 +174,4 @@ Nhiệm vụ: Trò chuyện, giải toán chi tiết, sáng tạo kịch bản v
   } catch (err) {
     return NextResponse.json({ error: 'Lỗi máy chủ: ' + err.message }, { status: 500 })
   }
-            }
-        
+}
