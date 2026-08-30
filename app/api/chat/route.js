@@ -152,8 +152,9 @@ Nhiệm vụ: Trò chuyện, giải toán chi tiết, sáng tạo kịch bản v
       return { role, parts: [{ text: m.content || '' }] }
     })
 
+    // SỬA LỖI Ở ĐÂY: Đã đổi tên model thành gemini-1.5-flash-latest
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -175,4 +176,5 @@ Nhiệm vụ: Trò chuyện, giải toán chi tiết, sáng tạo kịch bản v
   } catch (err) {
     return NextResponse.json({ error: 'Lỗi máy chủ: ' + err.message }, { status: 500 })
   }
-}
+              }
+      
