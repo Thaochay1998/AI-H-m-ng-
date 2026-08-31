@@ -45,7 +45,7 @@ export default function Home() {
       messages: [
         {
           role: 'assistant',
-          content: 'Pob tsawg! Tôi là AI H’Mông Toàn Năng.\n\n• Chat, Dịch thuật, Giải toán & Viết kịch bản.\n• Bấm 📷 tải ảnh lên: Soi ảnh, gõ "ghép mặt giữ nét gốc" hoặc "tạo video nhép miệng".\n• Bấm 🔊 Giọng Nam / Giọng Nữ bên dưới để nghe file âm thanh chuẩn H’Mông đã tích hợp sẵn!'
+          content: 'Pob tsawg! Tôi là AI H’Mông Toàn Năng.\n\n• Chat, Dịch thuật, Giải toán & Viết kịch bản.\n• Bấm 📷 tải ảnh lên: Soi ảnh, gõ "ghép mặt giữ nét gốc" hoặc "tạo video nhép miệng".\n• Bấm 🔊 Giọng Nam / Nữ bên dưới bất kỳ câu trả lời nào để AI đọc chuẩn văn bản bằng giọng tệp gốc của bạn!'
         }
       ]
     }
@@ -79,24 +79,39 @@ export default function Home() {
     }
   }
 
-  // TÍCH HỢP ĐỌC FILE ÂM THANH THỦ CÔNG CHUẨN GIỌNG (NAM / NỮ)
-  const playAudio = (gender) => {
-    if (isPlayingAudio) return
-
-    const fileName = gender === 'nu' ? '/audio/thuyet-trinh-nu.mp3' : '/audio/thuyet-trinh-nam.mp3'
+  // HÀM GỌI API TTS ĐỂ ĐỌC ĐỘNG MỌI VĂN BẢN VÀ KỊCH BẢN BẰNG FILE GỐC
+  const speakDynamicText = async (text, gender) => {
+    if (isPlayingAudio || !text) return
     setIsPlayingAudio(true)
 
-    const audio = new Audio(fileName)
-    audio.play().then(() => {
-      audio.onended = () => setIsPlayingAudio(false)
-      audio.onerror = () => {
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, gender })
+      })
+      const data = await res.json()
+
+      if (res.ok && data.audioUrl) {
+        const audio = new Audio(data.audioUrl)
+        audio.play().then(() => {
+          audio.onended = () => setIsPlayingAudio(false)
+          audio.onerror = () => {
+            setIsPlayingAudio(false)
+            alert('Không thể phát file âm thanh.')
+          }
+        }).catch(() => {
+          setIsPlayingAudio(false)
+          alert('Trình duyệt chặn phát âm thanh tự động.')
+        })
+      } else {
         setIsPlayingAudio(false)
-        alert('Không tìm thấy file âm thanh hoặc lỗi phát file.')
+        alert('Lỗi khởi tạo âm thanh.')
       }
-    }).catch(() => {
+    } catch (err) {
       setIsPlayingAudio(false)
-      alert('Trình duyệt chặn phát âm thanh tự động hoặc lỗi tệp.')
-    })
+      alert('Không kết nối được với API phát âm.')
+    }
   }
 
   const sendMessage = async (e) => {
@@ -144,7 +159,7 @@ export default function Home() {
     if (!content) return ''
     
     const videoRegex = /\[(.*?Video.*?)\]\((https?:\/\/.*?\.(?:mp4|webm|mov).*?)\)/gi
-    const imgRegex = /!\[.*?\]\((https?:\/\/.*?|data:image\/.*?)\)/g
+    const imgRegex = !\[.*?\]\((https?:\/\/.*?|data:image\/.*?)\)/g
     
     if (videoRegex.test(content)) {
       videoRegex.lastIndex = 0
@@ -219,14 +234,13 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-2">
-            {/* NÚT PHÁT NHANH GIỌNG NAM / NỮ THỦ CÔNG */}
-            <button onClick={() => playAudio('nam')} disabled={isPlayingAudio} className="text-xs bg-emerald-600/30 border border-emerald-500/50 text-emerald-300 px-2.5 py-1.5 rounded-lg font-medium hover:bg-emerald-600/40 transition flex items-center gap-1 shadow-sm cursor-pointer">
+            <button onClick={() => speakDynamicText("Xin chào", 'nam')} disabled={isPlayingAudio} className="text-xs bg-emerald-600/30 border border-emerald-500/50 text-emerald-300 px-2.5 py-1.5 rounded-lg font-medium hover:bg-emerald-600/40 transition flex items-center gap-1 shadow-sm cursor-pointer">
               <span>🔊</span>
-              <span>{isPlayingAudio ? 'Đang phát...' : 'Giọng Nam'}</span>
+              <span>{isPlayingAudio ? 'Đang đọc...' : 'Phát Nam'}</span>
             </button>
-            <button onClick={() => playAudio('nu')} disabled={isPlayingAudio} className="text-xs bg-teal-600/30 border border-teal-500/50 text-teal-300 px-2.5 py-1.5 rounded-lg font-medium hover:bg-teal-600/40 transition flex items-center gap-1 shadow-sm cursor-pointer">
+            <button onClick={() => speakDynamicText("Xin chào", 'nu')} disabled={isPlayingAudio} className="text-xs bg-teal-600/30 border border-teal-500/50 text-teal-300 px-2.5 py-1.5 rounded-lg font-medium hover:bg-teal-600/40 transition flex items-center gap-1 shadow-sm cursor-pointer">
               <span>🔊</span>
-              <span>{isPlayingAudio ? 'Đang phát...' : 'Giọng Nữ'}</span>
+              <span>{isPlayingAudio ? 'Đang đọc...' : 'Phát Nữ'}</span>
             </button>
           </div>
         </header>
@@ -240,12 +254,12 @@ export default function Home() {
                 {msg.role === 'assistant' && (
                   <div className="mt-2 pt-2 border-t border-slate-700/40 flex items-center justify-between text-xs text-slate-400">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => playAudio('nam')} disabled={isPlayingAudio} className="text-emerald-400 hover:text-emerald-300 font-medium transition cursor-pointer">
-                        <span>🔊 Giọng Nam</span>
+                      <button onClick={() => speakDynamicText(msg.content, 'nam')} disabled={isPlayingAudio} className="text-emerald-400 hover:text-emerald-300 font-medium transition cursor-pointer">
+                        <span>🔊 Nghe Giọng Nam</span>
                       </button>
                       <span className="text-slate-600">|</span>
-                      <button onClick={() => playAudio('nu')} disabled={isPlayingAudio} className="text-teal-400 hover:text-teal-300 font-medium transition cursor-pointer">
-                        <span>🔊 Giọng Nữ</span>
+                      <button onClick={() => speakDynamicText(msg.content, 'nu')} disabled={isPlayingAudio} className="text-teal-400 hover:text-teal-300 font-medium transition cursor-pointer">
+                        <span>🔊 Nghe Giọng Nữ</span>
                       </button>
                     </div>
                   </div>
@@ -257,7 +271,7 @@ export default function Home() {
             <div className="flex justify-start">
               <div className="bg-[#1e293b] px-4 py-3 rounded-2xl text-xs text-slate-400 animate-pulse border border-slate-700/50 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                AI H’Mông đang xử lý dữ liệu...
+                AI H’Mông đang xử lý dữ liệu và kịch bản...
               </div>
             </div>
           )}
@@ -268,18 +282,19 @@ export default function Home() {
           {selectedImage && (
             <div className="max-w-3xl mx-auto mb-2 flex items-center gap-2 bg-[#0f172a] p-2 rounded-xl border border-slate-700">
               <img src={selectedImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg" />
-              <span className="text-xs text-emerald-400 flex-1">Đã chọn ảnh! Gõ nội dung để xử lý.</span>
+              <span className="text-xs text-emerald-400 flex-1">Đã chọn ảnh! Gõ yêu cầu tạo kịch bản/video.</span>
               <button onClick={() => setSelectedImage(null)} className="text-xs text-red-400 px-2 cursor-pointer">Xóa</button>
             </div>
           )}
           <form onSubmit={sendMessage} className="max-w-3xl mx-auto flex gap-2">
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
             <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-[#0f172a] border border-slate-700 px-3.5 py-3 rounded-xl text-lg hover:bg-slate-800 transition cursor-pointer">📷</button>
-            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Nhập câu hỏi hoặc yêu cầu..." className="flex-1 bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition" />
+            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Nhập câu hỏi, viết kịch bản..." className="flex-1 bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition" />
             <button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-medium text-sm transition shadow-md cursor-pointer">Gửi</button>
           </form>
         </footer>
       </div>
     </div>
   )
-}
+      }
+      
