@@ -1,4 +1,4 @@
-      'use client'
+'use client'
 import { useState, useEffect, useRef } from 'react'
 
 export default function Home() {
@@ -45,7 +45,7 @@ export default function Home() {
       messages: [
         {
           role: 'assistant',
-          content: 'Pob tsawg! Tôi là AI H’Mông Toàn Năng.\n\n• Chat, Dịch thuật, Giải toán & Viết kịch bản.\n• Bấm 📷 tải ảnh lên: Soi ảnh, gõ "ghép mặt giữ nét gốc" hoặc "tạo video nhép miệng".\n• Bấm 🔊 bên dưới câu trả lời để nghe phát âm Tiếng H’Mông!'
+          content: 'Pob tsawg! Tôi là AI H’Mông Toàn Năng.\n\n• Chat, Dịch thuật, Giải toán & Viết kịch bản.\n• Bấm 📷 tải ảnh lên: Soi ảnh, gõ "ghép mặt giữ nét gốc" hoặc "tạo video nhép miệng".\n• Bấm 🔊 Giọng Nam / Giọng Nữ bên dưới để nghe file âm thanh chuẩn H’Mông đã tích hợp sẵn!'
         }
       ]
     }
@@ -79,64 +79,23 @@ export default function Home() {
     }
   }
 
-  // TÍCH HỢP TỪ ĐIỂN PHÁT ÂM CHUẨN TIẾNG H'MÔNG
-  const speakHmong = (text) => {
-    if (!text || isPlayingAudio) return
-    
-    const cleanText = text
-      .replace(/!\[.*?\]\(.*?\)/g, '')
-      .replace(/\[.*?\]\(.*?\)/g, '')
-      .replace(/[#*`_~()-]/g, '')
-      .trim()
+  // TÍCH HỢP ĐỌC FILE ÂM THANH THỦ CÔNG CHUẨN GIỌNG (NAM / NỮ)
+  const playAudio = (gender) => {
+    if (isPlayingAudio) return
 
-    if (!cleanText) return
-
+    const fileName = gender === 'nu' ? '/audio/thuyet-trinh-nu.mp3' : '/audio/thuyet-trinh-nam.mp3'
     setIsPlayingAudio(true)
 
-    // Từ điển từ vựng chuẩn tiếng H'Mông giúp phát âm chính xác tuyệt đối
-    const hmongVoiceMap = {
-      "pob tsawg": "https://translate.google.com/translate_tts?ie=UTF-8&q=Pob%20tsawg&tl=hmn&client=tw-ob",
-      "nyob zoo": "https://translate.google.com/translate_tts?ie=UTF-8&q=Nyob%20zoo&tl=hmn&client=tw-ob",
-      "ua tsaug": "https://translate.google.com/translate_tts?ie=UTF-8&q=Ua%20tsaug&tl=hmn&client=tw-ob",
-      "Kaj siab": "https://translate.google.com/translate_tts?ie=UTF-8&q=Kaj%20siab&tl=hmn&client=tw-ob"
-    }
-
-    const lowerClean = cleanText.toLowerCase()
-    let audioUrl = ''
-
-    for (const key in hmongVoiceMap) {
-      if (lowerClean.includes(key)) {
-        audioUrl = hmongVoiceMap[key]
-        break
-      }
-    }
-
-    if (!audioUrl) {
-      const encodedText = encodeURIComponent(cleanText.substring(0, 200))
-      audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=hmn&client=tw-ob`
-    }
-
-    const audio = new Audio(audioUrl)
-    
+    const audio = new Audio(fileName)
     audio.play().then(() => {
       audio.onended = () => setIsPlayingAudio(false)
       audio.onerror = () => {
         setIsPlayingAudio(false)
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel()
-          const utterance = new SpeechSynthesisUtterance(cleanText)
-          utterance.lang = 'en-US'
-          window.speechSynthesis.speak(utterance)
-        }
+        alert('Không tìm thấy file âm thanh hoặc lỗi phát file.')
       }
     }).catch(() => {
       setIsPlayingAudio(false)
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
-        const utterance = new SpeechSynthesisUtterance(cleanText)
-        utterance.lang = 'en-US'
-        window.speechSynthesis.speak(utterance)
-      }
+      alert('Trình duyệt chặn phát âm thanh tự động hoặc lỗi tệp.')
     })
   }
 
@@ -260,9 +219,14 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-2">
-            <button onClick={() => alert('Gói Pro mở khóa tính năng Ghép mặt gốc 100% & Tạo Video AI nhép miệng!')} className="text-xs bg-amber-500/20 border border-amber-500/50 text-amber-300 px-3 py-1.5 rounded-lg font-medium hover:bg-amber-500/30 transition flex items-center gap-1 shadow-sm">
-              <span>★</span>
-              <span>Nâng Pro 49k</span>
+            {/* NÚT PHÁT NHANH GIỌNG NAM / NỮ THỦ CÔNG */}
+            <button onClick={() => playAudio('nam')} disabled={isPlayingAudio} className="text-xs bg-emerald-600/30 border border-emerald-500/50 text-emerald-300 px-2.5 py-1.5 rounded-lg font-medium hover:bg-emerald-600/40 transition flex items-center gap-1 shadow-sm cursor-pointer">
+              <span>🔊</span>
+              <span>{isPlayingAudio ? 'Đang phát...' : 'Giọng Nam'}</span>
+            </button>
+            <button onClick={() => playAudio('nu')} disabled={isPlayingAudio} className="text-xs bg-teal-600/30 border border-teal-500/50 text-teal-300 px-2.5 py-1.5 rounded-lg font-medium hover:bg-teal-600/40 transition flex items-center gap-1 shadow-sm cursor-pointer">
+              <span>🔊</span>
+              <span>{isPlayingAudio ? 'Đang phát...' : 'Giọng Nữ'}</span>
             </button>
           </div>
         </header>
@@ -275,9 +239,15 @@ export default function Home() {
                 
                 {msg.role === 'assistant' && (
                   <div className="mt-2 pt-2 border-t border-slate-700/40 flex items-center justify-between text-xs text-slate-400">
-                    <button onClick={() => speakHmong(msg.content)} disabled={isPlayingAudio} className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-medium transition cursor-pointer">
-                      <span>{isPlayingAudio ? '🔊 Đang đọc...' : '🔊 Nghe đọc (H’Mông)'}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => playAudio('nam')} disabled={isPlayingAudio} className="text-emerald-400 hover:text-emerald-300 font-medium transition cursor-pointer">
+                        <span>🔊 Giọng Nam</span>
+                      </button>
+                      <span className="text-slate-600">|</span>
+                      <button onClick={() => playAudio('nu')} disabled={isPlayingAudio} className="text-teal-400 hover:text-teal-300 font-medium transition cursor-pointer">
+                        <span>🔊 Giọng Nữ</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -287,7 +257,7 @@ export default function Home() {
             <div className="flex justify-start">
               <div className="bg-[#1e293b] px-4 py-3 rounded-2xl text-xs text-slate-400 animate-pulse border border-slate-700/50 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                AI H’Mông đang xử lý dữ liệu... (Tạo video/ghép mặt có thể mất 15-30 giây)
+                AI H’Mông đang xử lý dữ liệu...
               </div>
             </div>
           )}
@@ -298,14 +268,14 @@ export default function Home() {
           {selectedImage && (
             <div className="max-w-3xl mx-auto mb-2 flex items-center gap-2 bg-[#0f172a] p-2 rounded-xl border border-slate-700">
               <img src={selectedImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg" />
-              <span className="text-xs text-emerald-400 flex-1">Đã chọn ảnh! Gõ "ghép mặt" hoặc "tạo video".</span>
+              <span className="text-xs text-emerald-400 flex-1">Đã chọn ảnh! Gõ nội dung để xử lý.</span>
               <button onClick={() => setSelectedImage(null)} className="text-xs text-red-400 px-2 cursor-pointer">Xóa</button>
             </div>
           )}
           <form onSubmit={sendMessage} className="max-w-3xl mx-auto flex gap-2">
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
             <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-[#0f172a] border border-slate-700 px-3.5 py-3 rounded-xl text-lg hover:bg-slate-800 transition cursor-pointer">📷</button>
-            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Nhập câu hỏi, 'Vẽ...', 'Ghép mặt giữ nét gốc' hoặc 'Tạo video'..." className="flex-1 bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition" />
+            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Nhập câu hỏi hoặc yêu cầu..." className="flex-1 bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition" />
             <button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-medium text-sm transition shadow-md cursor-pointer">Gửi</button>
           </form>
         </footer>
