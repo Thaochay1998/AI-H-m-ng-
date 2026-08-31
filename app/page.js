@@ -45,7 +45,7 @@ export default function Home() {
       messages: [
         {
           role: 'assistant',
-          content: 'Pob tsawg! Tôi là AI H’Mông Toàn Năng.\n\n• Chat, Dịch thuật, Giải toán & Viết kịch bản.\n• Bấm 📷 tải ảnh lên: Soi ảnh, gõ "ghép mặt giữ nét gốc" hoặc "tạo video nhép miệng".\n• Bấm 🔊 Giọng Nam / Nữ bên dưới bất kỳ câu trả lời nào để AI đọc chuẩn văn bản bằng giọng tệp gốc của bạn!'
+          content: 'Pob tsawg! Tôi là AI H’Mông Toàn Năng.\n\n• Chat, Dịch thuật, Giải toán & Viết kịch bản.\n• Bấm 📷 tải ảnh lên: Soi ảnh, gõ "ghép mặt giữ nét gốc" hoặc "tạo video nhép miệng".\n• Bấm 🔊 Giọng Nam / Nữ để AI đọc chính xác từng câu trả lời mới bằng âm thanh chuẩn xác!'
         }
       ]
     }
@@ -79,39 +79,45 @@ export default function Home() {
     }
   }
 
-  // HÀM GỌI API TTS ĐỂ ĐỌC ĐỘNG MỌI VĂN BẢN VÀ KỊCH BẢN BẰNG FILE GỐC
-  const speakDynamicText = async (text, gender) => {
-    if (isPlayingAudio || !text) return
+  // HÀM ĐỌC ĐỘNG MỌI CÂU TRẢ LỜI / KỊCH BẢN MỚI
+  const speakText = (text, gender) => {
+    if (!text || !('speechSynthesis' in window)) {
+      alert('Trình duyệt của bạn không hỗ trợ đọc văn bản.')
+      return
+    }
+
+    window.speechSynthesis.cancel()
     setIsPlayingAudio(true)
 
-    try {
-      const res = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, gender })
-      })
-      const data = await res.json()
+    // Làm sạch nội dung văn bản (loại bỏ markdown, link ảnh/video)
+    const cleanText = text
+      .replace(/!\[.*?\]\(.*?\)/g, '')
+      .replace(/\[.*?\]\(.*?\)/g, '')
+      .replace(/[#*`_~()-]/g, '')
+      .trim()
 
-      if (res.ok && data.audioUrl) {
-        const audio = new Audio(data.audioUrl)
-        audio.play().then(() => {
-          audio.onended = () => setIsPlayingAudio(false)
-          audio.onerror = () => {
-            setIsPlayingAudio(false)
-            alert('Không thể phát file âm thanh.')
-          }
-        }).catch(() => {
-          setIsPlayingAudio(false)
-          alert('Trình duyệt chặn phát âm thanh tự động.')
-        })
-      } else {
-        setIsPlayingAudio(false)
-        alert('Lỗi khởi tạo âm thanh.')
-      }
-    } catch (err) {
-      setIsPlayingAudio(false)
-      alert('Không kết nối được với API phát âm.')
+    const utterance = new SpeechSynthesisUtterance(cleanText)
+    utterance.lang = 'vi-VN' // Đọc chuẩn tiếng Việt
+    utterance.rate = 1.0 // Tốc độ đọc chuẩn tự nhiên
+
+    // Tùy chỉnh cao độ (pitch) và giọng đọc dựa theo lựa chọn Nam / Nữ
+    const voices = window.speechSynthesis.getVoices()
+    if (gender === 'nam') {
+      utterance.pitch = 0.85 // Giọng nam trầm hơn
+    } else {
+      utterance.pitch = 1.2 // Giọng nữ cao hơn
     }
+
+    // Cố gắng tìm giọng đọc tiếng Việt trên thiết bị
+    const viVoice = voices.find(v => v.lang.includes('vi') || v.lang.includes('VN'))
+    if (viVoice) {
+      utterance.voice = viVoice
+    }
+
+    utterance.onend = () => setIsPlayingAudio(false)
+    utterance.onerror = () => setIsPlayingAudio(false)
+
+    window.speechSynthesis.speak(utterance)
   }
 
   const sendMessage = async (e) => {
@@ -159,7 +165,7 @@ export default function Home() {
     if (!content) return ''
     
     const videoRegex = /\[(.*?Video.*?)\]\((https?:\/\/.*?\.(?:mp4|webm|mov).*?)\)/gi
-    const imgRegex = !\[.*?\]\((https?:\/\/.*?|data:image\/.*?)\)/g
+    const imgRegex = /!\[.*?\]\((https?:\/\/.*?|data:image\/.*?)\)/g
     
     if (videoRegex.test(content)) {
       videoRegex.lastIndex = 0
@@ -234,13 +240,9 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-2">
-            <button onClick={() => speakDynamicText("Xin chào", 'nam')} disabled={isPlayingAudio} className="text-xs bg-emerald-600/30 border border-emerald-500/50 text-emerald-300 px-2.5 py-1.5 rounded-lg font-medium hover:bg-emerald-600/40 transition flex items-center gap-1 shadow-sm cursor-pointer">
-              <span>🔊</span>
-              <span>{isPlayingAudio ? 'Đang đọc...' : 'Phát Nam'}</span>
-            </button>
-            <button onClick={() => speakDynamicText("Xin chào", 'nu')} disabled={isPlayingAudio} className="text-xs bg-teal-600/30 border border-teal-500/50 text-teal-300 px-2.5 py-1.5 rounded-lg font-medium hover:bg-teal-600/40 transition flex items-center gap-1 shadow-sm cursor-pointer">
-              <span>🔊</span>
-              <span>{isPlayingAudio ? 'Đang đọc...' : 'Phát Nữ'}</span>
+            <button onClick={() => alert('Gói Pro mở khóa tính năng Ghép mặt gốc 100% & Tạo Video AI nhép miệng!')} className="text-xs bg-amber-500/20 border border-amber-500/50 text-amber-300 px-3 py-1.5 rounded-lg font-medium hover:bg-amber-500/30 transition flex items-center gap-1 shadow-sm cursor-pointer">
+              <span>★</span>
+              <span>Nâng Pro 49k</span>
             </button>
           </div>
         </header>
@@ -254,12 +256,12 @@ export default function Home() {
                 {msg.role === 'assistant' && (
                   <div className="mt-2 pt-2 border-t border-slate-700/40 flex items-center justify-between text-xs text-slate-400">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => speakDynamicText(msg.content, 'nam')} disabled={isPlayingAudio} className="text-emerald-400 hover:text-emerald-300 font-medium transition cursor-pointer">
-                        <span>🔊 Nghe Giọng Nam</span>
+                      <button onClick={() => speakText(msg.content, 'nam')} disabled={isPlayingAudio} className="text-emerald-400 hover:text-emerald-300 font-medium transition cursor-pointer">
+                        <span>🔊 Đọc Giọng Nam</span>
                       </button>
                       <span className="text-slate-600">|</span>
-                      <button onClick={() => speakDynamicText(msg.content, 'nu')} disabled={isPlayingAudio} className="text-teal-400 hover:text-teal-300 font-medium transition cursor-pointer">
-                        <span>🔊 Nghe Giọng Nữ</span>
+                      <button onClick={() => speakText(msg.content, 'nu')} disabled={isPlayingAudio} className="text-teal-400 hover:text-teal-300 font-medium transition cursor-pointer">
+                        <span>🔊 Đọc Giọng Nữ</span>
                       </button>
                     </div>
                   </div>
@@ -271,7 +273,7 @@ export default function Home() {
             <div className="flex justify-start">
               <div className="bg-[#1e293b] px-4 py-3 rounded-2xl text-xs text-slate-400 animate-pulse border border-slate-700/50 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                AI H’Mông đang xử lý dữ liệu và kịch bản...
+                AI H’Mông đang soạn kịch bản và câu trả lời...
               </div>
             </div>
           )}
